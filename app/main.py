@@ -1,17 +1,38 @@
 from google_trigger import run_node_scraper
+from insights import generate_actionable_insights, generate_actionable_summaries
 
 def main():
-    # Specify the Google Maps URL to fetch data from.
-    url = "https://www.google.com/maps/place/Unphởgettable/@33.4127896,-111.8783333,17z/data=!3m1!4b1!4m6!3m5!1s0x872b0816aa4fa44d:0x3db2c68ebef9932e!8m2!3d33.4127851!4d-111.8757584!16s%2Fg%2F1tjgq15t?entry=ttu&g_ep=EgoyMDI1MDMyNS4xIKXMDSoASAFQAw%3D%3D"
+    # 🔗 Google Maps business URL
+    url = "https://www.google.com/maps/place/Starbucks/@33.4097855,-111.9285169,16z/data=!4m8!3m7!1s0x872b08eaf90c9655:0x874259164a48a72b!8m2!3d33.409781!4d-111.925942!9m1!1b1!16s%2Fg%2F1q6cn9pl9?entry=ttu&g_ep=EgoyMDI1MDMyNS4xIKXMDSoJLDEwMjExNjM5SAFQAw%3D%3D"
     print(f"🔍 Fetching reviews from: {url}")
     
-    # Call the scraper to get raw output; this will print extracted substrings inside the function.
-    raw_output = run_node_scraper(url)
-    
-    # Optionally, print the final raw output.
-    print("\nFinal raw output:")
-    print(raw_output)
-    
+    # 🔄 Scrape reviews + ratings
+    reviews, ratings = run_node_scraper(url)
+
+    print(f"🧾 Total Reviews Collected: {len(reviews)}")
+
+    if not reviews:
+        print("⚠️ No reviews found for this URL.")
+        return
+
+    # 🧠 Run full NLP pipeline on all reviews (not just low-rated)
+    insights, strengths = generate_actionable_insights(reviews)
+    summaries = generate_actionable_summaries(insights)
+
+    # 📊 Output insights
+    print("🔍 Actionable Insights:")
+    for k, v in insights.items():
+        print(f"- {k.title()}: {v}")
+
+    print("\n🌟 Strengths:")
+    for k, v in strengths.items():
+        print(f"- {k.title()}: {v}")
+
+
+    # 📋 Output summaries
+    print("\n📋 Recommendations:")
+    for summary in summaries:
+        print("-", summary)
 
 if __name__ == "__main__":
     main()
