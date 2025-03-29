@@ -5,15 +5,32 @@ import re
 def extract_text_values(raw_output: str):
     """
     Extract all text values that appear between 'text' and 'language'.
-    Returns a list of extracted text strings (reviews_list).
+    Also extract all ratings.
+    Returns: (reviews_list, rating_list)
     """
     reviews_list = []
+    rating_list = []
+
+    # Extract text between "text" and "language"
     matches = re.findall(r'text(.*?)language', raw_output)
+
+    # Extract raw ratings
+    raw_ratings = re.findall(r'rating(.*?)text', raw_output)
+
     for match in matches:
         text_value = match.strip()
-        if text_value:
+        if text_value and text_value.lower() != "null":
             reviews_list.append(text_value)
-    return reviews_list
+
+    for rating in raw_ratings:
+        cleaned = rating.strip().replace("n", "")  # Remove "n"
+        if cleaned.isdigit():
+            rating_list.append(int(cleaned))
+
+    return reviews_list, rating_list
+
+
+    
 
 def run_node_scraper(google_maps_url: str):
     try:
@@ -42,14 +59,17 @@ def run_node_scraper(google_maps_url: str):
         raw_output = result.stdout.strip().lstrip('\ufeff').strip()
         raw_output = re.sub(r'[^a-zA-Z0-9; ]', '', raw_output)
 
-        reviews_list = extract_text_values(raw_output)
+        final_reviews, final_ratings = extract_text_values(raw_output)
 
         # Final clean list (trim trailing characters like semicolons)
-        final_reviews = [review[:-1].strip() if review.endswith(";") else review.strip() for review in reviews_list]
-        final_reviews = [review[:-1].strip() if review.endswith("n") else review.strip() for review in reviews_list]
+        final_reviews = [review[:-1].strip() if review.endswith(";") else review.strip() for review in final_reviews]
+        final_reviews = [review[:-1].strip() if review.endswith("n") else review.strip() for review in final_reviews]
 
-        print(len(final_reviews))
-        return final_reviews
+        final_reviews = [i for i in final_reviews if i.strip().lower() != "null"]
+
+
+        print(f"✅ Extracted {len(final_reviews)} reviews and {len(final_ratings)} ratings")
+        return final_reviews, final_ratings
 
     except subprocess.CalledProcessError as e:
         print(f"❌ Node scraper process failed (exit code {e.returncode}):")
