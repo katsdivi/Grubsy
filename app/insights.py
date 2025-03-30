@@ -2,7 +2,7 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 import yake
 from collections import defaultdict
 import math
-from keyword_grouper import group_similar_keywords
+from .keyword_grouper import group_similar_keywords
 
 # ❌ Skip irrelevant keywords entirely
 SKIP_TERMS = {

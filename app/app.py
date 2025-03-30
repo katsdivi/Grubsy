@@ -3,9 +3,9 @@ from pydantic import BaseModel
 import requests
 import json
 
-from google_trigger import run_node_scraper
-from insights import generate_actionable_insights, generate_actionable_summaries
-
+from .google_trigger import run_node_scraper
+from .insights import generate_actionable_insights, generate_actionable_summaries
+from .url_finder import resolve_input_to_place_url
 app = FastAPI()
 
 class ReviewRequest(BaseModel):
@@ -16,8 +16,9 @@ def home():
     return {"message": "Use POST /analyze with a Google Maps URL to generate a business summary."}
 
 @app.post("/analyze")
-def analyze_reviews(request: ReviewRequest):
+async def analyze_reviews(request: ReviewRequest):
     url = request.url
+    url = await resolve_input_to_place_url(url)
     print(f"🔍 Scraping: {url}")
 
     # Step 1: Scrape Reviews
