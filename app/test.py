@@ -1,15 +1,20 @@
-import requests
+import asyncio
+from url_finder import resolve_input_to_place_url
 
-url = 'http://127.0.0.1:8000/analyze'
-test_data = {
-    "url": "https://www.google.com/maps/place/Panda+Express/@33.4555916,-112.0921321,12.51z/data=!4m10!1m2!2m1!1spanda+express!3m6!1s0x872b08ead4772ded:0x81b7f1d9efc0ae24!8m2!3d33.407917!4d-111.9257701!15sCg1wYW5kYSBleHByZXNzIgOIAQFaDyINcGFuZGEgZXhwcmVzc5IBEmNoaW5lc2VfcmVzdGF1cmFudOABAA!16s%2Fg%2F1ptxv8js7?entry=ttu&g_ep=EgoyMDI1MDMyNS4xIKXMDSoJLDEwMjExNjM5SAFQAw%3D%3D"
-}
+async def test_inputs():
+    test_cases = [
+        "Hungry Howies near apache",
+        "Starbucks at mill",
+        "https://www.google.com/maps?q=33.41278509999999,-111.8757584,ChIJTaRPqhYIK4cRLpP5vo7Gsj0"
+    ]
 
-response = requests.post(url, json=test_data)
+    for input_str in test_cases:
+        print(f"\n🔍 Input: {input_str}")
+        try:
+            resolved_url = await resolve_input_to_place_url(input_str)
+            print(f"✅ Resolved URL: {resolved_url}")
+        except Exception as e:
+            print(f"❌ Failed for input: {input_str}\n   Error: {e}")
 
-if response.status_code == 200:
-    print("✅ Success!")
-    print("📦 Response JSON:", response.json())
-else:
-    print(f"❌ Failed with status code {response.status_code}")
-    print("Response Text:", response.text)
+if __name__ == "__main__":
+    asyncio.run(test_inputs())
