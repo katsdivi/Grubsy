@@ -1,11 +1,14 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-import requests
 import json
+import asyncio
+import requests
 
+# Adjust these imports to match your project structure.
 from .google_trigger import run_node_scraper
 from .insights import generate_actionable_insights, generate_actionable_summaries
 from .url_finder import resolve_input_to_place_url
+
 app = FastAPI()
 
 class ReviewRequest(BaseModel):
@@ -17,33 +20,35 @@ def home():
 
 @app.post("/analyze")
 async def analyze_reviews(request: ReviewRequest):
-    url = request.url
-    url = await resolve_input_to_place_url(url)
-    print(f"🔍 Scraping: {url}")
-
-    # Step 1: Scrape Reviews
+    input_url = request.url
     try:
-        reviews, ratings = run_node_scraper(url)
+        # Resolve the input (business name, raw query URL, or detailed URL)
+        processed_url = await resolve_input_to_place_url(input_url)
+        print(f"🔍 Scraping: {processed_url}")
+        
+        # Step 1: Scrape Reviews (run_node_scraper is synchronous, so use asyncio.to_thread)
+        reviews, ratings = await asyncio.to_thread(run_node_scraper, processed_url)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error scraping reviews: {e}")
-
+        raise HTTPException(status_code=500, detail=f"Error processing URL or scraping reviews: {e}")
+    
     if not reviews:
         raise HTTPException(status_code=404, detail="No reviews found for this URL.")
-
-    # Step 2: NLP Insights
+    
     try:
+        # Step 2: NLP Insights from the scraped reviews
         insights, strengths = generate_actionable_insights(reviews)
         recommendations = generate_actionable_summaries(insights)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing review insights: {e}")
-
+    
+    # Build a summary structure for further processing
     summary_input = {
         "strengths": strengths,
         "insights": insights,
         "recommendations": recommendations
     }
-
-    # Step 3: AI Prompt for Mistral
+    
+    # Step 3: Construct an AI prompt for Mistral via Ollama
     prompt = f"""
 You are an AI assistant summarizing customer review analysis for a business owner.
 
@@ -63,39 +68,35 @@ Please return your output in this clean JSON format:
 ✦ Avoid repeating similar points.  
 ✦ Keep bullet points under 20 words if possible.
 """
-
     mistral_payload = {
         "model": "mistral",
         "prompt": prompt,
         "stream": False
     }
-
-    # Step 4: Call Ollama + Post-clean Response
+    
+    # Step 4: Call the Ollama API and post-process the response.
     try:
         ollama_response = requests.post("http://localhost:11434/api/generate", json=mistral_payload)
         if ollama_response.status_code != 200:
             raise Exception(f"Ollama error: {ollama_response.text}")
-
-        ai_response = ollama_response.json()["response"]
-
-        # Attempt to parse as JSON
+        
+        ai_response = ollama_response.json().get("response", "")
+        
+        # Attempt to parse the AI response as JSON.
         try:
             summary = json.loads(ai_response)
-
-            # Post-cleaning utility
+            # Utility function to clean up bullet lists.
             def clean_list(items):
                 return [item.strip().replace("\n", " ").replace("  ", " ") for item in items]
-
+            
             return {
-                "avg_rating":sum(ratings)/len(ratings),
+                "avg_rating": sum(ratings) / len(ratings),
                 "qualities": clean_list(summary.get("qualities", [])),
                 "weaknesses": clean_list(summary.get("weaknesses", [])),
                 "recommendations": clean_list(summary.get("recommendations", []))
             }
-
         except json.JSONDecodeError:
-            # If AI returns plain text instead of JSON
+            # If the AI returns plain text, just return it.
             return {"ai_summary": ai_response.strip()}
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate AI summary: {e}")
