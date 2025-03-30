@@ -11,7 +11,7 @@ if (!url) {
   try {
     const reviews = await scraper(url, {
       sort_type: "newest",
-      pages: 3,
+      pages: 10,
       clean: true,
     });
     console.log(JSON.stringify(reviews));

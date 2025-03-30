@@ -95,7 +95,7 @@ def generate_actionable_summaries(insights: dict) -> list[str]:
 
     for keyword, data in insights.items():
         count = data["mention_count"]
-        avg_neg = data["avg_neg_sentiment"]
+        avg_neg = data.get("avg_neg_sentiment", 0.0)
         rating = data["importance_rating"]
 
         if rating >= 8:
